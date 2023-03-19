@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  user-service:
+    build:
+      context: ./user
+    image: user-service-flask
+    container_name: "user-service"
+    environment:
+      - FLASK_APP=app.py
+    ports:
+      - 5001:5001
+    networks:
+      - inetwork
+
+  payment-service:
+    build:
+      context: ./payment
+    image: payment-service-flask
+    container_name: "payment-service"
+    environment:
+      - FLASK_APP=app.py
+    ports:
+      - 5002:5002
+    networks:
+      - inetwork
+
+  report-service:
+    build:
+      context: ./report
+    image: report-service-flask
+    container_name: "report-service"
+    environment:
+      - FLASK_APP=app.py
+    ports:
+      - 5003:5003
+    networks:
+      - inetwork
+
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    restart: unless-stopped
+    environment:
+      - DOMAIN
+    networks:
+      - inetwork
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx/template:/etc/nginx/templates:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/data:/var/www/certbot
+      - ./log/nginx:/var/log/nginx
+  certbot:
+    container_name: certbot
+    image: certbot/certbot:latest
+    depends_on:
+      - nginx
+    command: >-
+             certonly --reinstall --webroot --webroot-path=/var/www/certbot
+             --email ${EMAIL} --agree-tos --no-eff-email
+             -d ${DOMAIN}
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./certbot/data:/var/www/certbot
+
+networks:
+  inetwork:
+    driver: bridge
+
